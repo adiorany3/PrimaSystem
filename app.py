@@ -27,6 +27,7 @@ st.set_page_config(page_title="Prediktor Unggas — Prima System", page_icon="�
 CSS = """
 <style>
 .block-container { padding-top: 2.2rem; max-width: 1180px; }
+.app-footer { margin-top: 2.5rem; padding: 1rem 0 .5rem; border-top: 1px solid #dbe4ee; color: #6b7a8c; text-align: center; font-size: .82rem; }
 h1, h2, h3 { color: #1f3864; }
 .kpi { background: #f4f7fb; border: 1px solid #dbe4ee; border-radius: 10px; padding: 14px 16px; }
 .kpi .label { color: #6b7a8c; font-size: 0.82rem; letter-spacing: .02em; }
@@ -240,16 +241,76 @@ def page_b():
         st.caption("Model B · AUC 0,833 · PR-AUC 0,251 vs baseline 2,7% · 5% flock berisiko menangkap 44% grade C")
 
 
+def page_insight():
+    m = load_metrics()
+    if not m or "grade_placement" not in m or "grade_early" not in m:
+        st.info("Metrik belum tersedia. Sediakan training_results.json hasil pelatihan.")
+        return
+    a, b = m["grade_placement"], m["grade_early"]["hgb"]
+    ac, at = a["cv"], a["temporal_2025_2026"]
+    ca, cb = ac["capacity_5pct"], b["capacity_5pct"]
+    ta = SCHEMA["model_a"]["tiers"]
+    st.subheader("Insight utama")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Prevalensi grade C (A)", f"{ac['prevalence_pct']:.2f}%")
+    c2.metric("Lift model A @5%", f"{ca['lift']:.1f}×")
+    c3.metric("Recall model A @5%", f"{ca['recall']*100:.1f}%")
+    st.markdown(
+        f"Dari {ac['n']} flock validasi, 5% teratas ({ca['flagged']}) memiliki presisi "
+        f"{ca['precision']*100:.1f}% vs prevalensi {ac['prevalence_pct']:.2f}%; sekitar "
+        f"{ca['recall']*100:.1f}% grade C tertangkap. Pada uji temporal 2026, AUC {at['auc']:.3f}, "
+        f"lift @5% {at['capacity_5pct']['lift']:.1f}×. Model B terkalibrasi (Brier {b['brier']:.3f}); "
+        f"5% prioritas menghasilkan presisi {cb['precision']*100:.1f}% dan recall {cb['recall']*100:.1f}%."
+    )
+    st.caption(f"Model A kategori relatif: sedang ≥ {ta['p75']*100:.1f}%, tinggi ≥ {ta['p90']*100:.1f}%. "
+               "Angka model A bukan peluang nyata; gunakan peringkat untuk mengatur kapasitas.")
+    st.subheader("Tindakan berdasarkan risiko")
+    st.dataframe(pd.DataFrame([
+        ["Rendah", f"< {ta['p75']*100:.1f}%", "<2%", "Pemantauan rutin; recording harian."],
+        ["Sedang", f"{ta['p75']*100:.1f}–{ta['p90']*100:.1f}%", "2–10%", "Verifikasi input; audit DOC, brooding, air, litter; jadwalkan kunjungan ≤7 hari."],
+        ["Tinggi", f"≥{ta['p90']*100:.1f}%", "≥10%", "Kunjungan ≤24–48 jam; audit menyeluruh; necropsy bila mortalitas meningkat."],
+    ], columns=["Risiko", "Model A", "Model B", "Tindakan"]), hide_index=True, use_container_width=True)
+    st.caption("Model B memakai ambang absolut 2%/10%; model A memakai ambang relatif dari distribusi latih.")
+    st.subheader("Strategi pencegahan per fase")
+    c1, c2, c3 = st.columns(3)
+    c1.markdown("**Chick-in–hari 7**\n- Verifikasi sumber DOC; timbang sampel 100 ekor dan catat uniformitas.\n- Brooding 32–34 °C hari pertama, lalu turun bertahap; cek crop fill 24 jam.\n- Jaga litter kering, ventilasi tanpa draft, kepadatan sesuai bobot panen.\n- Bilas jalur air; cek aliran nipple, kualitas air, dan mortalitas harian.")
+    c2.markdown("**Hari 8–14**\n- Timbang minimal 2×/minggu; bandingkan dengan standar strain.\n- Lonjakan mortalitas atau penurunan feed intake: periksa air, pakan, suhu, litter segera.\n- Cek amonia, ventilasi, kebocoran nipple, dan tanda coccidiosis.\n- Pastikan vaksinasi sesuai program dokter hewan.")
+    c3.markdown("**Hari 15–21 & panen**\n- Pantau uniformitas, FCR, feed intake, heat stress, dan kepadatan.\n- `n_obs` harus mencerminkan jumlah pencatatan nyata.\n- Ikuti withdrawal sesuai label; hindari puasa berlebihan dan handling kasar.\n- Catat hasil panen/grade untuk menguji efektivitas tindakan.")
+    top = a.get("top_features") or {}
+    if top:
+        st.subheader("Faktor berasosiasi dengan risiko (model A)")
+        s = pd.Series(top).sort_values()
+        st.bar_chart(s, horizontal=True, color="#2f6f8f")
+        st.caption("Koefisien positif terkait risiko lebih tinggi, negatif lebih rendah. Asosiasi bukan sebab-akibat; faktor produk/pelanggan bukan rekomendasi untuk diubah.")
+    dups = pd.Series(SCHEMA["model_a"]["cat"]["Location"]).groupby(
+        pd.Series(SCHEMA["model_a"]["cat"]["Location"]).str.lower()).unique()
+    variants = [" / ".join(sorted(v)) for v in dups if len(v) > 1]
+    if variants:
+        st.warning("Label lokasi beda kapitalisasi; rapikan sebelum retrain: " + "; ".join(variants))
+    st.subheader("Monitoring & batasan")
+    st.markdown(
+        "- Pantau bulanan: PR-AUC, recall/lift @5%, Brier, kalibrasi, prevalensi, dan drift per segmen.\n"
+        "- Hitung ulang ambang p75/p90 tiap retrain; jangan gunakan angka lama.\n"
+        "- Simpan prediksi, tindakan, dan hasil panen. Tanpa label hasil, dampak model tidak terukur.\n"
+        f"- Data positif terbatas: {ac['positives']} kasus model A dan {b['positives']} model B; perubahan kecil bisa tidak stabil.\n"
+        "- Model A belum terkalibrasi; model mortalitas lesi (AUC 0,645) tidak dipakai. Prediksi bukan diagnosis atau tindakan otomatis.\n"
+        "- Aplikasi tanpa autentikasi: akses localhost/SSH tunnel atau reverse proxy berpassword."
+    )
+
+
 def main():
     st.title("Prediktor Unggas — Prima System")
     st.caption("Dua model: risiko grade C saat chick-in dan peringatan dini ≤21 hari. Model mortalitas dari skor lesi tidak dipakai (AUC 0,645).")
-    tabs = st.tabs(["Grade C (chick-in)", "Peringatan dini (≤21 hari)", "Tentang model"])
+    tabs = st.tabs(["Grade C (chick-in)", "Peringatan dini (≤21 hari)", "Insight & pencegahan", "Tentang model"])
     with tabs[0]:
         page_a()
     with tabs[1]:
         page_b()
     with tabs[2]:
+        page_insight()
+    with tabs[3]:
         about_block()
+    st.markdown("<div class='app-footer'>Developed by Galuh Adi Insani</div>", unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
