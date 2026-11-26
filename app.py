@@ -1,9 +1,11 @@
 """Sistem prediktor lesi & performa unggas — Streamlit.
 
-Menjalankan tiga model:
+Menjalankan dua model sesuai rekomendasi laporan:
   A. grade C saat chick-in (logistic regression)
   B. peringatan dini grade C dari performa harian <=21 hari (HistGradientBoosting)
-  C. risiko mortalitas >5% dari 48 skor lesi nekropsi (logistic regression)
+
+Model C (mortalitas dari skor lesi) sengaja tidak dipakai: AUC 0,645 dan tidak layak
+untuk keputusan operasional.
 """
 from __future__ import annotations
 
@@ -17,8 +19,7 @@ import streamlit as st
 
 APP = Path(__file__).resolve().parent
 ROOT = APP.parent
-MODELS = APP / "models"  # model files are stored beside app.py
-
+MODELS = APP / "models"
 SCHEMA = json.loads((APP / "schema.json").read_text())
 
 st.set_page_config(page_title="Prediktor Unggas — Prima System", page_icon="🐔", layout="wide")
@@ -42,23 +43,18 @@ st.markdown(CSS, unsafe_allow_html=True)
 
 @st.cache_resource(show_spinner=False)
 def load_models():
-    models = {
+    return {
         "A": joblib.load(MODELS / "grade_placement.joblib"),
         "B": joblib.load(MODELS / "grade_early.joblib"),
-        "C": joblib.load(MODELS / "mort_high.joblib"),
     }
-    # Ponytail: old sklearn predict_proba expects this removed attribute; drop shim when old runtimes are retired.
-    for key in ("A", "C"):
-        classifier = models[key].steps[-1][1]
-        if not hasattr(classifier, "multi_class"):
-            classifier.multi_class = "auto"
-    return models
 
 
 @st.cache_data(show_spinner=False)
 def load_metrics():
-    p = ROOT / "reports/training_results.json"
-    return json.loads(p.read_text()) if p.exists() else {}
+    for p in (APP / "training_results.json", ROOT / "reports/training_results.json"):
+        if p.exists():
+            return json.loads(p.read_text())
+    return {}
 
 
 CAT_A = ["Area", "Location", "Customer Group", "Customer Name", "Sub Customer", "House",
@@ -66,10 +62,6 @@ CAT_A = ["Area", "Location", "Customer Group", "Customer Name", "Sub Customer", 
 NUM_A = ["log_chick_in"]
 CAT_B = ["Area", "Hou", "DOC", "Cust. Group", "Product Group", "Plant"]
 NUM_B = ["Age-d", "Body Weight", "Mort %", "Act FCR", "Feed Intake", "Indeks", "n_obs"]
-CAT_C = ["Area", "House", "Feeding"]
-LES = list(SCHEMA["model_c"]["lesions"].keys())
-
-
 def risk_tag(p: float, high: float, mid: float) -> tuple[str, str]:
     if p >= high:
         return "Tinggi", "high"
@@ -122,18 +114,15 @@ def about_block():
         b = m["grade_early"]["hgb"]
         rows.append(["B — peringatan dini ≤21 hari", f"{b['auc']:.3f}", f"{b['pr_auc']:.3f}",
                      f"{b['prevalence_pct']:.2f}%", f"{b['brier']:.3f}"])
-        c = m["mort_high"]
-        rows.append(["C — mortalitas >5%", f"{c['auc']:.3f}", f"{c['pr_auc']:.3f}",
-                     f"{c['prevalence_pct']:.2f}%", f"{c['brier']:.3f}"])
-    st.dataframe(pd.DataFrame(rows, columns=["Model", "AUC", "PR-AUC", "Prevalensi", "Brier"]),
-                 hide_index=True, use_container_width=True)
+    st.table(pd.DataFrame(rows, columns=["Model", "AUC", "PR-AUC", "Prevalensi", "Brier"]))
     st.warning(
         "Probabilitas model A belum terkalibrasi (class_weight balanced): angka 0,8 bukan berarti 80% peluang. "
-        "Gunakan kategori risiko/peringkat. Model C lemah (AUC 0,645) dan tidak untuk keputusan produksi."
+        "Gunakan kategori risiko/peringkat, bukan angka mentah sebagai peluang."
     )
     st.markdown(
-        "<div class='note'>Sumber: data Prima System 2021–2026 (10.320 panen, 2.888 flock harian, 4.270 nekropsi). "
-        "Validasi grouped by farm + uji temporal 2025→2026.</div>", unsafe_allow_html=True)
+        "<div class='note'>Sumber: data Prima System 2021–2026 (10.320 panen, 2.888 flock harian). "
+        "Validasi grouped by farm + uji temporal 2025→2026. Model mortalitas dari skor lesi tidak dipakai.</div>",
+        unsafe_allow_html=True)
 
 
 def page_a():
@@ -251,51 +240,15 @@ def page_b():
         st.caption("Model B · AUC 0,833 · PR-AUC 0,251 vs baseline 2,7% · 5% flock berisiko menangkap 44% grade C")
 
 
-def page_c():
-    st.subheader("Risiko mortalitas >5% — dari skor lesi nekropsi")
-    st.caption("Gunakan hanya sebagai alat audit; model ini lemah (AUC 0,645).")
-    s = SCHEMA["model_c"]
-    with st.form("form_c"):
-        c1, c2, c3, c4 = st.columns(4)
-        age = c1.number_input("Umur saat nekropsi (hari)", 4, 38, int(s["age"]["default"]))
-        area = c2.selectbox("Area", s["cat"]["Area"])
-        house = c3.selectbox("House", s["cat"]["House"])
-        feeding = c4.selectbox("Feeding", s["cat"]["Feeding"])
-        st.markdown("**Skor lesi** (0 = tidak ada; batas maksimum sesuai kamus)")
-        vals = {}
-        cols = st.columns(6)
-        for i, (code, meta) in enumerate(s["lesions"].items()):
-            vals[code] = cols[i % 6].number_input(code, min_value=0, max_value=max(int(meta["max"]), 1),
-                                                 value=int(meta["default"]), key=f"les_{code}")
-        submitted = st.form_submit_button("Hitung risiko", type="primary", use_container_width=True)
-
-    if submitted:
-        row = {**vals, "Age_d": age, "Area": area, "House": house, "Feeding": feeding}
-        X = pd.DataFrame([row])[LES + ["Age_d"] + CAT_C]
-        p = float(load_models()["C"].predict_proba(X)[0, 1])
-        label, cls = risk_tag(p, SCHEMA["model_c"]["tiers"]["p90"], SCHEMA["model_c"]["tiers"]["p75"])
-        c1, c2 = st.columns([1.1, 1])
-        c1.markdown(kpi("Probabilitas mortalitas >5%", f"{p*100:.1f}%", (label, cls)), unsafe_allow_html=True)
-        c2.markdown(kpi("Kategori", label), unsafe_allow_html=True)
-        st.error("Model C tidak layak untuk keputusan produksi (AUC 0,645; lift 2,1×). Gunakan hanya untuk memilih kasus audit.")
-        st.caption("Kategori relatif terhadap distribusi data latih (rendah < persentil 75, tinggi > persentil 90).")
-        contrib = contributions(load_models()["C"], X)
-        if not contrib.empty:
-            st.markdown("**Lesi/faktor paling berpengaruh pada input ini**")
-            st.bar_chart(contrib.set_index("fitur")["kontribusi"], horizontal=True, color="#b23a48")
-
-
 def main():
     st.title("Prediktor Unggas — Prima System")
-    st.caption("Tiga model: risiko grade C saat chick-in, peringatan dini ≤21 hari, dan risiko mortalitas tinggi dari skor lesi.")
-    tabs = st.tabs(["Grade C (chick-in)", "Peringatan dini (≤21 hari)", "Mortalitas (nekropsi)", "Tentang model"])
+    st.caption("Dua model: risiko grade C saat chick-in dan peringatan dini ≤21 hari. Model mortalitas dari skor lesi tidak dipakai (AUC 0,645).")
+    tabs = st.tabs(["Grade C (chick-in)", "Peringatan dini (≤21 hari)", "Tentang model"])
     with tabs[0]:
         page_a()
     with tabs[1]:
         page_b()
     with tabs[2]:
-        page_c()
-    with tabs[3]:
         about_block()
 
 

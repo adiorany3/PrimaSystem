@@ -1,5 +1,5 @@
 streamlit>=1.40
 pandas>=2.0
 numpy>=1.26
-scikit-learn>=1.9.1,<2.0  # model .joblib dibuat dengan 1.9.1; <1.9 error 'multi_class'
+scikit-learn>=1.5
 joblib>=1.3
