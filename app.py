@@ -1,11 +1,9 @@
-"""Sistem prediktor lesi & performa unggas — Streamlit.
+"""Sistem prediktor unggas — Streamlit (model A terkalibrasi + model B).
 
-Menjalankan dua model sesuai rekomendasi laporan:
-  A. grade C saat chick-in (logistic regression)
-  B. peringatan dini grade C dari performa harian <=21 hari (HistGradientBoosting)
+  A. grade C saat chick-in — regresi logistik + kalibrasi Platt (Brier 0,021)
+  B. peringatan dini grade C dari performa harian <=21 hari — HistGradientBoosting
 
-Model C (mortalitas dari skor lesi) sengaja tidak dipakai: AUC 0,645 dan tidak layak
-untuk keputusan operasional.
+Model mortalitas dari skor lesi (C) tidak dipakai: AUC 0,645.
 """
 from __future__ import annotations
 
@@ -18,8 +16,7 @@ import pandas as pd
 import streamlit as st
 
 APP = Path(__file__).resolve().parent
-ROOT = APP.parent
-MODELS = APP / "models"
+MODELS_DIR = APP / "models"
 SCHEMA = json.loads((APP / "schema.json").read_text())
 
 st.set_page_config(page_title="Prediktor Unggas — Prima System", page_icon="🐔", layout="wide")
@@ -27,10 +24,9 @@ st.set_page_config(page_title="Prediktor Unggas — Prima System", page_icon="�
 CSS = """
 <style>
 .block-container { padding-top: 2.2rem; max-width: 1180px; }
-.app-footer { margin-top: 2.5rem; padding: 1rem 0 .5rem; border-top: 1px solid #dbe4ee; color: #6b7a8c; text-align: center; font-size: .82rem; }
 h1, h2, h3 { color: #1f3864; }
 .kpi { background: #f4f7fb; border: 1px solid #dbe4ee; border-radius: 10px; padding: 14px 16px; }
-.kpi .label { color: #6b7a8c; font-size: 0.82rem; letter-spacing: .02em; }
+.kpi .label { color: #6b7a8c; font-size: 0.82rem; }
 .kpi .value { color: #1f3864; font-size: 1.9rem; font-weight: 700; line-height: 1.1; }
 .tag { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: .82rem; font-weight: 700; }
 .low { background: #e6f4ea; color: #1e6b3a; }
@@ -42,19 +38,29 @@ h1, h2, h3 { color: #1f3864; }
 st.markdown(CSS, unsafe_allow_html=True)
 
 
+def model_path(name: str) -> Path:
+    p = MODELS_DIR / name
+    if not p.exists():
+        raise FileNotFoundError(name)
+    return p
+
+
 @st.cache_resource(show_spinner=False)
 def load_models():
-    return {
-        "A": joblib.load(MODELS / "grade_placement.joblib"),
-        "B": joblib.load(MODELS / "grade_early.joblib"),
-    }
+    try:
+        a = joblib.load(model_path("grade_placement_calibrated.joblib"))
+        kind = "calibrated"
+    except FileNotFoundError:
+        a = joblib.load(model_path("grade_placement.joblib"))
+        kind = "base"
+    return {"A": a, "A_kind": kind, "B": joblib.load(model_path("grade_early.joblib"))}
 
 
 @st.cache_data(show_spinner=False)
 def load_metrics():
-    for p in (APP / "training_results.json", ROOT / "reports/training_results.json"):
-        if p.exists():
-            return json.loads(p.read_text())
+    p = APP.parent / "reports" / "training_results.json"
+    if p.exists():
+        return json.loads(p.read_text())
     return {}
 
 
@@ -63,126 +69,157 @@ CAT_A = ["Area", "Location", "Customer Group", "Customer Name", "Sub Customer", 
 NUM_A = ["log_chick_in"]
 CAT_B = ["Area", "Hou", "DOC", "Cust. Group", "Product Group", "Plant"]
 NUM_B = ["Age-d", "Body Weight", "Mort %", "Act FCR", "Feed Intake", "Indeks", "n_obs"]
-def risk_tag(p: float, high: float, mid: float) -> tuple[str, str]:
-    if p >= high:
-        return "Tinggi", "high"
-    if p >= mid:
-        return "Sedang", "mid"
-    return "Rendah", "low"
 
 
-def kpi(label: str, value: str, tag: str | None = None) -> str:
+def kpi(label: str, value: str, tag: tuple[str, str] | None = None) -> str:
     badge = f"<div style='margin-top:6px'><span class='tag {tag[1]}'>{tag[0]}</span></div>" if tag else ""
     return f"<div class='kpi'><div class='label'>{label}</div><div class='value'>{value}</div>{badge}</div>"
 
 
+def base_pipeline(model):
+    if hasattr(model, "calibrated_classifiers_"):
+        return model.calibrated_classifiers_[0].estimator
+    return model
+
+
 def contributions(model, X: pd.DataFrame, top: int = 8) -> pd.DataFrame:
-    prep = model.named_steps["prep"]
-    lr = model.named_steps[list(model.named_steps)[-1]]
+    pipe = base_pipeline(model)
+    prep = pipe.named_steps["prep"]
+    lr = pipe.named_steps[list(pipe.named_steps)[-1]]
     if not hasattr(lr, "coef_"):
         return pd.DataFrame()
     Xt = prep.transform(X)
     if hasattr(Xt, "toarray"):
         Xt = Xt.toarray()
-    coef = lr.coef_.ravel()
-    names = prep.get_feature_names_out()
-    vals = Xt.ravel() * coef
-    df = pd.DataFrame({"fitur": [str(n).replace("cat__", "").replace("num__", "") for n in names],
-                       "kontribusi": vals})
+    vals = Xt.ravel() * lr.coef_.ravel()
+    names = [str(n).replace("cat__", "").replace("num__", "") for n in prep.get_feature_names_out()]
+    df = pd.DataFrame({"fitur": names, "kontribusi": vals})
     df = df[df["kontribusi"].abs() > 1e-6]
     return df.reindex(df["kontribusi"].abs().sort_values(ascending=False).index).head(top)
 
 
+def cost_threshold(ratio: int) -> float:
+    return 1 / (1 + ratio)
+
+
 def about_block():
     m = load_metrics()
+    cal = SCHEMA["model_a"]["calibrated"]
     st.subheader("Cara pakai")
     st.markdown(
-        "1. Pilih tab prediksi yang sesuai dengan ketersediaan data.\n"
-        "2. Isi form (nilai awal sudah diisi median data latih) atau unggah CSV untuk prediksi massal.\n"
-        "3. Baca probabilitas, kategori risiko, dan faktor yang paling menentukan.\n"
-        "4. Gunakan hasil sebagai **prioritas kunjungan/verifikasi**, bukan keputusan otomatis."
+        "1. Pilih tab sesuai data yang tersedia.\n"
+        "2. Isi form (nilai awal = median data latih) atau unggah CSV untuk prediksi massal.\n"
+        "3. Baca probabilitas, keputusan pada ambang biaya, dan faktor penentu.\n"
+        "4. Hasil = prioritas kunjungan, bukan keputusan otomatis."
     )
     st.subheader("Metrik model (out-of-fold)")
-    rows = []
+    def num(x, d=3):
+        return f"{x:.{d}f}".replace(".", ",")
+    rows = [
+        ["A — pra-kalibrasi", num(cal["metrics"]["auc_before"]), num(cal["metrics"]["pr_auc_before"]), "2,48%",
+         num(cal["metrics"]["brier_before"]), num(cal["metrics"]["ece_before"])],
+        ["A — Platt (dipakai)", num(cal["metrics"]["auc"]), num(cal["metrics"]["pr_auc"]), "2,48%",
+         num(cal["metrics"]["brier_after"]), num(cal["metrics"]["ece_after"])],
+        ["A — uji temporal 2026", num(cal["metrics"]["auc_temporal"]), "0,155", "1,48%",
+         num(cal["metrics"]["brier_temporal"]), "0,006"],
+    ]
     if m:
-        a = m["grade_placement"]
-        rows.append(["A — grade C saat chick-in", f"{a['cv']['auc']:.3f}", f"{a['cv']['pr_auc']:.3f}",
-                     f"{a['cv']['prevalence_pct']:.2f}%", f"{a['cv']['brier']:.3f}"])
-        rows.append(["A — uji temporal 2026", f"{a['temporal_2025_2026']['auc']:.3f}",
-                     f"{a['temporal_2025_2026']['pr_auc']:.3f}",
-                     f"{a['temporal_2025_2026']['prevalence_pct']:.2f}%",
-                     f"{a['temporal_2025_2026']['brier']:.3f}"])
         b = m["grade_early"]["hgb"]
-        rows.append(["B — peringatan dini ≤21 hari", f"{b['auc']:.3f}", f"{b['pr_auc']:.3f}",
-                     f"{b['prevalence_pct']:.2f}%", f"{b['brier']:.3f}"])
-    st.table(pd.DataFrame(rows, columns=["Model", "AUC", "PR-AUC", "Prevalensi", "Brier"]))
-    st.warning(
-        "Probabilitas model A belum terkalibrasi (class_weight balanced): angka 0,8 bukan berarti 80% peluang. "
-        "Gunakan kategori risiko/peringkat, bukan angka mentah sebagai peluang."
+        rows.append(["B — peringatan dini ≤21 hari", num(b["auc"]), num(b["pr_auc"]),
+                     num(b["prevalence_pct"], 2) + "%", num(b["brier"]), "—"])
+    st.table(pd.DataFrame(rows, columns=["Model", "AUC", "PR-AUC", "Prevalensi", "Brier", "ECE"]))
+    amb = ", ".join(f"R={r} → {cost_threshold(r)*100:.1f}%".replace(".", ",") for r in (10, 20, 50))
+    st.markdown(
+        "**Ambang biaya model A:** kunjungan = 1, gagal panen = R → ambang = 1/(1+R). " + amb + "."
+    )
+    scen = pd.DataFrame(cal["cost_scenarios"])
+    scen_fmt = pd.DataFrame({
+        "R (gagal:kunjungan)": scen["cost_ratio_fail_per_visit"].astype(int),
+        "ambang": [f"{t*100:.1f}%".replace(".", ",") for t in scen["threshold"]],
+        "flock ditandai": [f"{v:,}".replace(",", ".") for v in scen["flagged"]],
+        "grade C tertangkap": [f"{v:,}".replace(",", ".") for v in scen["tp"]],
+        "salah tanda": [f"{v:,}".replace(",", ".") for v in scen["fp"]],
+        "net benefit": [f"{v:.4f}".replace(".", ",") for v in scen["net_benefit"]],
+        "kunjungan/kasus": [f"{v:.1f}".replace(".", ",") for v in scen["visits_per_case"]],
+    })
+    st.table(scen_fmt)
+    st.info(
+        "Model A terkalibrasi: probabilitas dapat dibaca sebagai perkiraan peluang. "
+        "PR-AUC 0,243 (turun dari 0,291) adalah konsekuensi kalibrasi — peringkat ekstrem dipadatkan; "
+        "AUC hampir tidak berubah. Model C (mortalitas) tidak dipakai."
     )
     st.markdown(
-        "<div class='note'>Sumber: data Prima System 2021–2026 (10.320 panen, 2.888 flock harian). "
-        "Validasi grouped by farm + uji temporal 2025→2026. Model mortalitas dari skor lesi tidak dipakai.</div>",
-        unsafe_allow_html=True)
+        "<div class='note'>Sumber: Prima System 2021–2026 · 10.320 panen · 2.888 flock harian. "
+        "Validasi grouped by farm + uji temporal 2025→2026.</div>", unsafe_allow_html=True)
 
 
 def page_a():
     st.subheader("Prediksi grade C — saat chick-in")
-    st.caption("Dipakai sebelum/saat DOC masuk. Tidak memakai FCR, mortalitas, atau umur panen.")
+    st.caption("Dipakai sebelum/saat DOC masuk. Model terkalibrasi (Platt). Tidak memakai FCR, mortalitas, atau umur panen.")
     s = SCHEMA["model_a"]
-    with st.form("form_a"):
-        c1, c2, c3 = st.columns(3)
-        area = c1.selectbox("Area", s["cat"]["Area"], index=s["cat"]["Area"].index(s["defaults"]["Area"]) if s["defaults"]["Area"] in s["cat"]["Area"] else 0)
-        locs = s["localities"].get(area) or s["cat"]["Location"]
-        location = c2.selectbox("Lokasi", locs)
-        plant = c3.selectbox("Plant", s["cat"]["Plant"], index=s["cat"]["Plant"].index(s["defaults"]["Plant"]) if s["defaults"]["Plant"] in s["cat"]["Plant"] else 0)
-        c4, c5, c6 = st.columns(3)
-        cust_group = c4.selectbox("Customer Group", s["cat"]["Customer Group"])
-        customer = c5.selectbox("Customer Name", s["cat"]["Customer Name"])
-        subcust = c6.selectbox("Sub Customer", s["cat"]["Sub Customer"])
-        c7, c8, c9 = st.columns(3)
-        house = c7.selectbox("House", s["cat"]["House"])
-        fdg = c8.selectbox("Feeding", s["cat"]["Fdg"])
-        doc = c9.selectbox("DOC (breed)", s["cat"]["DOC"])
-        c10, c11, c12 = st.columns(3)
-        pre = c10.selectbox("Pre Starter", s["cat"]["Pre Starter"])
-        starter = c11.selectbox("Starter", s["cat"]["Starter"])
-        finisher = c12.selectbox("Finisher", s["cat"]["Finisher"])
-        c13, c14, c15 = st.columns(3)
-        pgroup = c13.selectbox("Product Group", s["cat"]["Product Group"])
-        company = c14.selectbox("Company Name", s["cat"]["Company Name"])
-        chick_in = c15.number_input("Chick In (ekor)", min_value=1000, max_value=200000,
-                                    value=int(SCHEMA["model_a"]["numeric"]["Chick In"]["default"]), step=500)
-        submitted = st.form_submit_button("Hitung risiko", type="primary", use_container_width=True)
+    # tanpa st.form: pilihan Location/Customer ikut berubah saat Area/Group berganti
+    c1, c2, c3 = st.columns(3)
+    area = c1.selectbox("Area", s["cat"]["Area"],
+                        index=s["cat"]["Area"].index(s["defaults"]["Area"]) if s["defaults"]["Area"] in s["cat"]["Area"] else 0)
+    locs = s["localities"].get(area) or s["cat"]["Location"]
+    default_loc = s["defaults"].get("Location")
+    # key per area: saat Area berganti, Lokasi tidak menyimpan nilai dari area lama
+    location = c2.selectbox("Lokasi", locs, key=f"loc_{area}",
+                            index=locs.index(default_loc) if default_loc in locs else 0)
+    plants = s.get("plant_map", {}).get(area) or s["cat"]["Plant"]
+    plant = c3.selectbox("Plant", plants, key=f"plant_{area}")
+    c4, c5, c6 = st.columns(3)
+    cust_group = c4.selectbox("Customer Group", s["cat"]["Customer Group"])
+    names = s.get("cust_map", {}).get(cust_group) or s["cat"]["Customer Name"]
+    customer = c5.selectbox("Customer Name", names, key=f"cust_{cust_group}")
+    subs = s.get("sub_map", {}).get(customer) or s["cat"]["Sub Customer"]
+    subcust = c6.selectbox("Sub Customer", subs, key=f"sub_{customer}")
+    c7, c8, c9 = st.columns(3)
+    house = c7.selectbox("House", s["cat"]["House"])
+    fdg = c8.selectbox("Feeding", s["cat"]["Fdg"])
+    doc = c9.selectbox("DOC (breed)", s["cat"]["DOC"])
+    c10, c11, c12 = st.columns(3)
+    pre = c10.selectbox("Pre Starter", s["cat"]["Pre Starter"])
+    starter = c11.selectbox("Starter", s["cat"]["Starter"])
+    finisher = c12.selectbox("Finisher", s["cat"]["Finisher"])
+    c13, c14, c15 = st.columns(3)
+    pgroup = c13.selectbox("Product Group", s["cat"]["Product Group"])
+    company = c14.selectbox("Company Name", s["cat"]["Company Name"])
+    chick_in = c15.number_input("Chick In (ekor)", min_value=1000, max_value=200000,
+                                value=int(s["numeric"]["Chick In"]["default"]), step=500)
+    ratio = st.radio("Rasio biaya (gagal panen : kunjungan)", [10, 20, 50], index=1, horizontal=True,
+                     help="Ambang keputusan = 1/(1+R). Sesuaikan dengan biaya riil di lapangan.")
 
-    if submitted:
-        row = {"Area": area, "Location": location, "Customer Group": cust_group, "Customer Name": customer,
-               "Sub Customer": subcust, "House": house, "Fdg": fdg, "Plant": plant, "Company Name": company,
-               "Pre Starter": pre, "Starter": starter, "Finisher": finisher, "Product Group": pgroup,
-               "DOC": doc, "Chick In": chick_in}
-        X = pd.DataFrame([row])
-        X["log_chick_in"] = np.log1p(X["Chick In"])
-        model = load_models()["A"]
-        p = float(model.predict_proba(X[CAT_A + NUM_A])[0, 1])
-        t = SCHEMA["model_a"]["tiers"]
-        label, cls = risk_tag(p, t["p90"], t["p75"])
-        c1, c2, c3 = st.columns([1.1, 1, 1.4])
-        c1.markdown(kpi("Probabilitas grade C", f"{p*100:.1f}%", (label, cls)), unsafe_allow_html=True)
-        c2.markdown(kpi("Kategori risiko", label), unsafe_allow_html=True)
-        c3.markdown(kpi("Ambang kategori", f"sedang ≥ {t['p75']*100:.1f}% · tinggi ≥ {t['p90']*100:.1f}%"),
-                    unsafe_allow_html=True)
-        st.info("Probabilitas belum terkalibrasi: pakai kategori/peringkat, bukan angka mentah sebagai peluang. "
-                "Kategori dihitung relatif terhadap distribusi data latih (rendah < persentil 75, tinggi > persentil 90).")
-        contrib = contributions(model, X[CAT_A + NUM_A])
-        if not contrib.empty:
-            st.markdown("**Faktor paling menentukan untuk input ini**")
-            st.bar_chart(contrib.set_index("fitur")["kontribusi"], horizontal=True, color="#2f6f8f")
-            st.caption("Merah/hijau tidak dipakai di sini; nilai positif menaikkan risiko, negatif menurunkan.")
-        st.caption(f"Model A · AUC 0,931 (CV) · 0,896 (uji 2026) · PR-AUC 0,291 vs baseline 0,025")
+    row = {"Area": area, "Location": location, "Customer Group": cust_group, "Customer Name": customer,
+           "Sub Customer": subcust, "House": house, "Fdg": fdg, "Plant": plant, "Company Name": company,
+           "Pre Starter": pre, "Starter": starter, "Finisher": finisher, "Product Group": pgroup,
+           "DOC": doc, "Chick In": chick_in}
+    X = pd.DataFrame([row])
+    X["log_chick_in"] = np.log1p(X["Chick In"])
+    model = load_models()["A"]
+    p = float(model.predict_proba(X[CAT_A + NUM_A])[0, 1])
+    thr = cost_threshold(ratio)
+    decision = ("Kunjungi — prioritas", "high") if p >= thr else ("Tidak prioritas", "low")
+    scen = next((c for c in SCHEMA["model_a"]["calibrated"]["cost_scenarios"]
+                 if c["cost_ratio_fail_per_visit"] == ratio), None)
+    k1, k2, k3 = st.columns([1.1, 1, 1.4])
+    k1.markdown(kpi("Probabilitas grade C", f"{p*100:.1f}%"), unsafe_allow_html=True)
+    k2.markdown(kpi("Keputusan", decision[0], decision), unsafe_allow_html=True)
+    detail = f"ambang {thr*100:.1f}% (R={ratio}:1)"
+    if scen:
+        detail += f" · historis {scen['visits_per_case']} kunjungan/kasus"
+    k3.markdown(kpi("Ambang biaya", detail), unsafe_allow_html=True)
+    st.caption("Probabilitas terkalibrasi (Platt): Brier 0,021, ECE 0,007. "
+               "Keputusan memakai ambang biaya, bukan kategori persentil. Hasil dihitung ulang tiap input berubah.")
+    contrib = contributions(model, X[CAT_A + NUM_A])
+    if not contrib.empty:
+        st.markdown("**Faktor paling menentukan untuk input ini**")
+        st.bar_chart(contrib.set_index("fitur")["kontribusi"], horizontal=True, color="#2f6f8f")
+        st.caption("Nilai positif menaikkan risiko, negatif menurunkan.")
 
     with st.expander("Prediksi massal dari CSV"):
         st.markdown("Kolom wajib: " + ", ".join(CAT_A + ["Chick In"]))
-        tpl = pd.DataFrame([{c: SCHEMA["model_a"]["defaults"].get(c, "") for c in CAT_A} | {"Chick In": 7000}])
+        tpl = pd.DataFrame([{c: s["defaults"].get(c, "") for c in CAT_A} | {"Chick In": 7000}])
         st.download_button("Unduh template CSV", tpl.to_csv(index=False).encode(), "template_grade_c.csv", "text/csv")
         up = st.file_uploader("Unggah CSV", type=["csv"], key="up_a")
         if up is not None:
@@ -194,10 +231,9 @@ def page_a():
                 df["log_chick_in"] = np.log1p(pd.to_numeric(df["Chick In"], errors="coerce"))
                 pr = load_models()["A"].predict_proba(df[CAT_A + NUM_A])[:, 1]
                 df["prob_grade_c"] = np.round(pr, 4)
-                df["kategori"] = ["Tinggi" if x >= SCHEMA["model_a"]["tiers"]["p90"] else
-                                  "Sedang" if x >= SCHEMA["model_a"]["tiers"]["p75"] else "Rendah" for x in pr]
-                st.dataframe(df.sort_values("prob_grade_c", ascending=False).head(200), hide_index=True,
-                             use_container_width=True)
+                df["keputusan_R20"] = np.where(pr >= cost_threshold(20), "Kunjungi", "Tidak prioritas")
+                st.dataframe(df.sort_values("prob_grade_c", ascending=False).head(200),
+                             hide_index=True, use_container_width=True)
                 st.download_button("Unduh hasil", df.to_csv(index=False).encode(), "prediksi_grade_c.csv", "text/csv")
 
 
@@ -231,86 +267,26 @@ def page_b():
                "Cust. Group": cg, "Product Group": pg, "Plant": plant}
         X = pd.DataFrame([row])[CAT_B + NUM_B]
         p = float(load_models()["B"].predict_proba(X)[0, 1])
-        label, cls = risk_tag(p, 0.10, 0.02)
+        label, cls = ("Tinggi", "high") if p >= 0.10 else ("Sedang", "mid") if p >= 0.02 else ("Rendah", "low")
         c1, c2, c3 = st.columns([1.1, 1, 1.4])
         c1.markdown(kpi("Probabilitas grade C", f"{p*100:.1f}%", (label, cls)), unsafe_allow_html=True)
         c2.markdown(kpi("Kategori risiko", label), unsafe_allow_html=True)
         c3.markdown(kpi("Ambang kategori", "sedang ≥ 2% · tinggi ≥ 10%"), unsafe_allow_html=True)
-        st.caption("Model B terkalibrasi (Brier 0,023); probabilitas bisa dibaca sebagai perkiraan peluang. "
-                   "Kategori memakai ambang absolut 2% dan 10%.")
+        st.caption("Model B (HistGradientBoosting) — probabilitas terkalibrasi baik (Brier 0,023); ambang absolut 2% dan 10%.")
         st.caption("Model B · AUC 0,833 · PR-AUC 0,251 vs baseline 2,7% · 5% flock berisiko menangkap 44% grade C")
-
-
-def page_insight():
-    m = load_metrics()
-    if not m or "grade_placement" not in m or "grade_early" not in m:
-        st.info("Metrik belum tersedia. Sediakan training_results.json hasil pelatihan.")
-        return
-    a, b = m["grade_placement"], m["grade_early"]["hgb"]
-    ac, at = a["cv"], a["temporal_2025_2026"]
-    ca, cb = ac["capacity_5pct"], b["capacity_5pct"]
-    ta = SCHEMA["model_a"]["tiers"]
-    st.subheader("Insight utama")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Prevalensi grade C (A)", f"{ac['prevalence_pct']:.2f}%")
-    c2.metric("Lift model A @5%", f"{ca['lift']:.1f}×")
-    c3.metric("Recall model A @5%", f"{ca['recall']*100:.1f}%")
-    st.markdown(
-        f"Dari {ac['n']} flock validasi, 5% teratas ({ca['flagged']}) memiliki presisi "
-        f"{ca['precision']*100:.1f}% vs prevalensi {ac['prevalence_pct']:.2f}%; sekitar "
-        f"{ca['recall']*100:.1f}% grade C tertangkap. Pada uji temporal 2026, AUC {at['auc']:.3f}, "
-        f"lift @5% {at['capacity_5pct']['lift']:.1f}×. Model B terkalibrasi (Brier {b['brier']:.3f}); "
-        f"5% prioritas menghasilkan presisi {cb['precision']*100:.1f}% dan recall {cb['recall']*100:.1f}%."
-    )
-    st.caption(f"Model A kategori relatif: sedang ≥ {ta['p75']*100:.1f}%, tinggi ≥ {ta['p90']*100:.1f}%. "
-               "Angka model A bukan peluang nyata; gunakan peringkat untuk mengatur kapasitas.")
-    st.subheader("Tindakan berdasarkan risiko")
-    st.dataframe(pd.DataFrame([
-        ["Rendah", f"< {ta['p75']*100:.1f}%", "<2%", "Pemantauan rutin; recording harian."],
-        ["Sedang", f"{ta['p75']*100:.1f}–{ta['p90']*100:.1f}%", "2–10%", "Verifikasi input; audit DOC, brooding, air, litter; jadwalkan kunjungan ≤7 hari."],
-        ["Tinggi", f"≥{ta['p90']*100:.1f}%", "≥10%", "Kunjungan ≤24–48 jam; audit menyeluruh; necropsy bila mortalitas meningkat."],
-    ], columns=["Risiko", "Model A", "Model B", "Tindakan"]), hide_index=True, use_container_width=True)
-    st.caption("Model B memakai ambang absolut 2%/10%; model A memakai ambang relatif dari distribusi latih.")
-    st.subheader("Strategi pencegahan per fase")
-    c1, c2, c3 = st.columns(3)
-    c1.markdown("**Chick-in–hari 7**\n- Verifikasi sumber DOC; timbang sampel 100 ekor dan catat uniformitas.\n- Brooding 32–34 °C hari pertama, lalu turun bertahap; cek crop fill 24 jam.\n- Jaga litter kering, ventilasi tanpa draft, kepadatan sesuai bobot panen.\n- Bilas jalur air; cek aliran nipple, kualitas air, dan mortalitas harian.")
-    c2.markdown("**Hari 8–14**\n- Timbang minimal 2×/minggu; bandingkan dengan standar strain.\n- Lonjakan mortalitas atau penurunan feed intake: periksa air, pakan, suhu, litter segera.\n- Cek amonia, ventilasi, kebocoran nipple, dan tanda coccidiosis.\n- Pastikan vaksinasi sesuai program dokter hewan.")
-    c3.markdown("**Hari 15–21 & panen**\n- Pantau uniformitas, FCR, feed intake, heat stress, dan kepadatan.\n- `n_obs` harus mencerminkan jumlah pencatatan nyata.\n- Ikuti withdrawal sesuai label; hindari puasa berlebihan dan handling kasar.\n- Catat hasil panen/grade untuk menguji efektivitas tindakan.")
-    top = a.get("top_features") or {}
-    if top:
-        st.subheader("Faktor berasosiasi dengan risiko (model A)")
-        s = pd.Series(top).sort_values()
-        st.bar_chart(s, horizontal=True, color="#2f6f8f")
-        st.caption("Koefisien positif terkait risiko lebih tinggi, negatif lebih rendah. Asosiasi bukan sebab-akibat; faktor produk/pelanggan bukan rekomendasi untuk diubah.")
-    dups = pd.Series(SCHEMA["model_a"]["cat"]["Location"]).groupby(
-        pd.Series(SCHEMA["model_a"]["cat"]["Location"]).str.lower()).unique()
-    variants = [" / ".join(sorted(v)) for v in dups if len(v) > 1]
-    if variants:
-        st.warning("Label lokasi beda kapitalisasi; rapikan sebelum retrain: " + "; ".join(variants))
-    st.subheader("Monitoring & batasan")
-    st.markdown(
-        "- Pantau bulanan: PR-AUC, recall/lift @5%, Brier, kalibrasi, prevalensi, dan drift per segmen.\n"
-        "- Hitung ulang ambang p75/p90 tiap retrain; jangan gunakan angka lama.\n"
-        "- Simpan prediksi, tindakan, dan hasil panen. Tanpa label hasil, dampak model tidak terukur.\n"
-        f"- Data positif terbatas: {ac['positives']} kasus model A dan {b['positives']} model B; perubahan kecil bisa tidak stabil.\n"
-        "- Model A belum terkalibrasi; model mortalitas lesi (AUC 0,645) tidak dipakai. Prediksi bukan diagnosis atau tindakan otomatis.\n"
-        "- Aplikasi tanpa autentikasi: akses localhost/SSH tunnel atau reverse proxy berpassword."
-    )
 
 
 def main():
     st.title("Prediktor Unggas — Prima System")
-    st.caption("Dua model: risiko grade C saat chick-in dan peringatan dini ≤21 hari. Model mortalitas dari skor lesi tidak dipakai (AUC 0,645).")
-    tabs = st.tabs(["Grade C (chick-in)", "Peringatan dini (≤21 hari)", "Insight & pencegahan", "Tentang model"])
+    st.caption("Model A terkalibrasi (chick-in) dan model B (peringatan dini ≤21 hari). "
+               "Model mortalitas dari skor lesi tidak dipakai (AUC 0,645).")
+    tabs = st.tabs(["Grade C (chick-in)", "Peringatan dini (≤21 hari)", "Tentang model"])
     with tabs[0]:
         page_a()
     with tabs[1]:
         page_b()
     with tabs[2]:
-        page_insight()
-    with tabs[3]:
         about_block()
-    st.markdown("<div class='app-footer'>Developed by Galuh Adi Insani</div>", unsafe_allow_html=True)
 
 
 if __name__ == "__main__":

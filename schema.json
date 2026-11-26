@@ -1386,7 +1386,7 @@
   },
   "defaults": {
    "Area": "Central Jv",
-   "Location": "Lampung",
+   "Location": "Ambarawa",
    "Customer Group": "Freddy Group",
    "Customer Name": "Brantas Abadi Sentosa",
    "Sub Customer": "Amm | Bandung",
@@ -1573,6 +1573,524 @@
    ],
    "Lombok": [
     "Lombok"
+   ]
+  },
+  "cust_map": {
+   "Adhom Farm": [
+    "Adhom Farm"
+   ],
+   "Adidana Tumbuh Barkah": [
+    "Adidana Tumbuh Barkah"
+   ],
+   "Agung Mitra Sejahtera": [
+    "Agung Mitra Sejahtera"
+   ],
+   "Anjawani Mitra Madani": [
+    "Anjawani Mitra Madani"
+   ],
+   "Arm Raja Makmur": [
+    "Arm Raja Makmur"
+   ],
+   "As Putra Group": [
+    "As Putra Ceha"
+   ],
+   "Berkah Arga Sentosa Farm": [
+    "Berkah Arga Sentosa Farm"
+   ],
+   "Berkah Insan Madani Sejahtera": [
+    "Berkah Insan Madani Sejahtera"
+   ],
+   "Berkah Mitra Wibawa": [
+    "Berkah Mitra Wibawa"
+   ],
+   "Binuang Rizki Gemilang": [
+    "Binuang Rizki Gemilang"
+   ],
+   "Broiler X": [
+    "Integrasi Teknologi Unggas"
+   ],
+   "Dinamika Megatama Citra": [
+    "Mitra Wijaya Mulya",
+    "Dinamika Megatama Citra"
+   ],
+   "Freddy Group": [
+    "Brantas Abadi Sentosa",
+    "Broiler Makmur Tangguh",
+    "Sejati Mulia Lestari",
+    "Duta Unggas Abadi"
+   ],
+   "Gemilang Berkah Abadi Sejahtera": [
+    "Gemilang Berkah Abadi Sejahtera"
+   ],
+   "Gemilang Karya Agri": [
+    "Gemilang Karya Agri"
+   ],
+   "Herlinawati": [
+    "Kurnia Agung"
+   ],
+   "Indomitra Unggul Jaya": [
+    "Berlian Indomitra Sentosa"
+   ],
+   "Intertama Trikencana Bersinar": [
+    "Pelita Trikencana Bersinar",
+    "Intertama Trikencana Bersinar"
+   ],
+   "Mustika Jaya Lestari": [
+    "Laju Satwa Wisesa",
+    "Gilar Perwira Satria",
+    "Lawu Abadi Nusa",
+    "Mitra Peternakan Unggas",
+    "Mitra Mahkota Buana",
+    "Mitra Unggas Makmur",
+    "Aneka Intan Lestari",
+    "Kedu Lintas Berbintang",
+    "Muria Jaya Raya",
+    "Bintang Terang Bersinar",
+    "Karya Satwa Mulia",
+    "Sawung Gema Abadi"
+   ],
+   "Pilar Mitra Amanah": [
+    "Pilar Mitra Amanah"
+   ],
+   "Pt Chick In Indonesia": [
+    "Pt Chick In Indonesia"
+   ],
+   "Purna Artha Selaras": [
+    "Purna Artha Selaras"
+   ],
+   "Rainbow Rehobot": [
+    "Rainbow Rehobot"
+   ],
+   "Rama Jaya": [
+    "Satwa Mitra Jaya"
+   ],
+   "Rehobot": [
+    "Rehobot"
+   ],
+   "Rismawan Pratama Bersinar": [
+    "Pendekar Ayam Sejati",
+    "Smba",
+    "Mutiara Sinar Abadi",
+    "Hikmah Mitra Bersinar"
+   ],
+   "Safindo Sukses Selalu": [
+    "Safindo Sukses Selalu"
+   ],
+   "Sehat Rukun Sentosa": [
+    "Sehat Rukun Sentosa"
+   ],
+   "Sido Agung Unggas Djaya": [
+    "Sido Agung Unggas Djaya"
+   ],
+   "Sindu Group": [
+    "Rukun Mitra Bersama",
+    "Trisula Bintang Utama",
+    "Majeng Makmur Pratama"
+   ],
+   "Sumber Intan Mandiri": [
+    "Cipta Intan Mandiri"
+   ],
+   "Surya Bintang Sejati": [
+    "Surya Bintang Sejati"
+   ],
+   "Surya Inti Ternak": [
+    "Surya Inti Ternak"
+   ],
+   "Surya Inti Ternak Indonesia": [
+    "Surya Inti Ternak Indonesia"
+   ],
+   "Tabbasam Group": [
+    "Tabbasam"
+   ],
+   "Tata Kendali Performa": [
+    "Tata Kendali Performa"
+   ],
+   "Tunggul Bintang Abadi": [
+    "Tunggul Bintang Abadi"
+   ],
+   "Unggas Lombok Jaya": [
+    "Unggas Lombok Jaya"
+   ],
+   "Wahana Group": [
+    "Sumber Berkah Sejahtera",
+    "Berkah Broiler Evolution"
+   ],
+   "Wijaya Agro Indonesia": [
+    "Wijaya Agro Indonesia"
+   ]
+  },
+  "sub_map": {
+   "Adhom Farm": [
+    "Adhom Farm"
+   ],
+   "Adidana Tumbuh Barkah": [
+    "Atb | Bogor"
+   ],
+   "Agung Mitra Sejahtera": [
+    "Ams | Wonosobo",
+    "Ams | Semarang",
+    "Ams | Pati"
+   ],
+   "Aneka Intan Lestari": [
+    "Ail | Pekalongan",
+    "Ail | Pemalang",
+    "Ail | Batang",
+    "Lan | Pemalang"
+   ],
+   "Anjawani Mitra Madani": [
+    "Amm | Bandung",
+    "Amm | Tasikmalaya",
+    "Amm | Valla",
+    "Amm | Buah Batu",
+    "Amm | Cianjur",
+    "Amm | Cileunyi",
+    "Amm | Padalarang"
+   ],
+   "Arm Raja Makmur": [
+    "Arm | Tangerang"
+   ],
+   "As Putra Ceha": [
+    "As Putra Ceha"
+   ],
+   "Berkah Arga Sentosa Farm": [
+    "Basf | Bogor",
+    "Basf | Tangerang"
+   ],
+   "Berkah Broiler Evolution": [
+    "Bbe | Jombang"
+   ],
+   "Berkah Insan Madani Sejahtera": [
+    "Bima | Serang"
+   ],
+   "Berkah Mitra Wibawa": [
+    "Bmw | Tangerang"
+   ],
+   "Berlian Indomitra Sentosa": [
+    "Bis | Pemalang",
+    "Bis | Karanganyar"
+   ],
+   "Bintang Terang Bersinar": [
+    "Btb | Bumiayu"
+   ],
+   "Binuang Rizki Gemilang": [
+    "Brg | Majalengka"
+   ],
+   "Brantas Abadi Sentosa": [
+    "Bas | Lampung",
+    "Bas | Caruban",
+    "Bas | Madiun",
+    "Bas | Bojonegoro",
+    "Bas | Pati 1",
+    "Bas | Pati 3",
+    "Bas | Pati 2",
+    "Fre | Bas Lampung",
+    "Bas | Pati",
+    "Bas | Pati 4",
+    "Bas | Wonogiri",
+    "Bas | Blora",
+    "Bas | Pati 5",
+    "Bas | Pati 7",
+    "Bas | Kendal",
+    "Bas | Karangnyar",
+    "Bas | Kediri",
+    "Bas | Nganjuk",
+    "Bas | Karanganyar",
+    "Bas | Solo"
+   ],
+   "Broiler Makmur Tangguh": [
+    "Bromat | Lampung",
+    "Fre | Bromat Lampung",
+    "Bromat | Madiun",
+    "Bromat | Kudus",
+    "Bromat | Kediri"
+   ],
+   "Cipta Intan Mandiri": [
+    "Cim | Tangerang"
+   ],
+   "Dinamika Megatama Citra": [
+    "Dmc | Madiun"
+   ],
+   "Duta Unggas Abadi": [
+    "Dua | Jember",
+    "Dua | Probolinggo"
+   ],
+   "Gemilang Berkah Abadi Sejahtera": [
+    "Gemilang Berkah Abadi Sejahter",
+    "Gemilang Berkah Abadi Sejahtera"
+   ],
+   "Gemilang Karya Agri": [
+    "Gka | Lebak",
+    "Gka | Cilegon"
+   ],
+   "Gilar Perwira Satria": [
+    "Gps | Purbalingga",
+    "Gps | Purwokerto",
+    "Gps | Banjarnegara",
+    "Gps | Cilacap"
+   ],
+   "Hikmah Mitra Bersinar": [
+    "Hmb | Pandeglang"
+   ],
+   "Integrasi Teknologi Unggas": [
+    "Itu | Lampung",
+    "Itu | Ponorogo",
+    "Itu | Tegal",
+    "Itu | Magelang",
+    "Itu | Wonogiri"
+   ],
+   "Intertama Trikencana Bersinar": [
+    "Itb | Bandung 1"
+   ],
+   "Karya Satwa Mulia": [
+    "Ksm | Madiun",
+    "Ksm | Ponorogo",
+    "Ksm | Kediri",
+    "Ksm | Ngawi"
+   ],
+   "Kedu Lintas Berbintang": [
+    "Klb | Temanggung"
+   ],
+   "Kurnia Agung": [
+    "Kurnia Agung",
+    "Satwa Indotama Perkasa"
+   ],
+   "Laju Satwa Wisesa": [
+    "Lsw | Kediri",
+    "Lsw | Tulungagung",
+    "Lsw | Jombang"
+   ],
+   "Lawu Abadi Nusa": [
+    "Lan | Wonogiri",
+    "Lan | Klaten",
+    "Lan | Manyaran",
+    "Lan | Jember",
+    "Sga | Grabag",
+    "Lan | Sukoharjo",
+    "Lan | Sragen"
+   ],
+   "Majeng Makmur Pratama": [
+    "Mmp | Magelang",
+    "Mmp | Temanggung",
+    "Mmp | Madiun",
+    "Mmp | Klm"
+   ],
+   "Mitra Mahkota Buana": [
+    "Mitra Mahkota Buana"
+   ],
+   "Mitra Peternakan Unggas": [
+    "Mpu | Bekasi",
+    "Mpu | Cirebon",
+    "Mpu | Prapatan",
+    "Mpu Cirebon"
+   ],
+   "Mitra Unggas Makmur": [
+    "Mum | Sleman",
+    "Mum | Kulon Progo"
+   ],
+   "Mitra Wijaya Mulya": [
+    "Mwm | Palembang",
+    "Dmc | Mwm"
+   ],
+   "Muria Jaya Raya": [
+    "Mjr | Gresik"
+   ],
+   "Mutiara Sinar Abadi": [
+    "Msa | Klm"
+   ],
+   "Pelita Trikencana Bersinar": [
+    "Ptb | Lampung"
+   ],
+   "Pendekar Ayam Sejati": [
+    "Pas | Serang"
+   ],
+   "Pilar Mitra Amanah": [
+    "Pma | Makassar"
+   ],
+   "Pt Chick In Indonesia": [
+    "Csp | Temanggung",
+    "Csp | Solo"
+   ],
+   "Purna Artha Selaras": [
+    "Pas"
+   ],
+   "Rainbow Rehobot": [
+    "Rainbow Rehobot"
+   ],
+   "Rehobot": [
+    "Rainbow Rehobot",
+    "Rehobot"
+   ],
+   "Rukun Mitra Bersama": [
+    "Rmb | Pekalongan",
+    "Rmb | Purbalingga",
+    "Rmb | Pemalang",
+    "Rmb | Gunung Kidul"
+   ],
+   "Safindo Sukses Selalu": [
+    "Sss | Pati"
+   ],
+   "Satwa Mitra Jaya": [
+    "Smj | Lampung"
+   ],
+   "Sawung Gema Abadi": [
+    "Sga | Grabag",
+    "Sga | Salatiga",
+    "Sga | Kalimantan"
+   ],
+   "Sehat Rukun Sentosa": [
+    "Srs | Solo"
+   ],
+   "Sejati Mulia Lestari": [
+    "Sml | Ungaran",
+    "Sml | Jepara",
+    "Sml | Ambarawa"
+   ],
+   "Sido Agung Unggas Djaya": [
+    "Sido Agung Unggas Djaya",
+    "Saud-Internal"
+   ],
+   "Smba": [
+    "Siba | Klm"
+   ],
+   "Sumber Berkah Sejahtera": [
+    "Sbs | Madiun",
+    "Sbs | Kediri",
+    "Sbs | Jombang",
+    "Sbs | Blitar",
+    "Sbs | Malang",
+    "Internal"
+   ],
+   "Surya Bintang Sejati": [
+    "Sbs | Kudus",
+    "Sbs | Semarang",
+    "Sbs | Salatiga",
+    "Sbs | Pati",
+    "Sbs | Purwodadi",
+    "Sbs | Solo"
+   ],
+   "Surya Inti Ternak": [
+    "Sit | Madiun"
+   ],
+   "Surya Inti Ternak Indonesia": [
+    "Sit | Malang",
+    "Sit | Lumajang",
+    "Siti | Kalsel",
+    "Sit | Madiun",
+    "Siti | Klm",
+    "Siti | Jogja",
+    "Siti | Solo",
+    "Sit | Kediri",
+    "Surya Inti Ternak"
+   ],
+   "Tabbasam": [
+    "Tbs | Jember"
+   ],
+   "Tata Kendali Performa": [
+    "Tkp | Ambarawa",
+    "Tkp | Pati"
+   ],
+   "Trisula Bintang Utama": [
+    "Tbu | Tegal",
+    "Tbu | Pemalang",
+    "Tbu | Pekalongan",
+    "Tbu | Sleman",
+    "Tbu | Purbalingga",
+    "Trisula | Pekalongan",
+    "Trisula | Tegal",
+    "Trisula Bintang Utama"
+   ],
+   "Tunggul Bintang Abadi": [
+    "Tba | Semarang",
+    "Tba | Demak",
+    "Tba | Pekalongan"
+   ],
+   "Unggas Lombok Jaya": [
+    "Ulj | Lombok"
+   ],
+   "Wijaya Agro Indonesia": [
+    "Wijaya Agro Indonesia"
+   ]
+  },
+  "calibrated": {
+   "quantiles": {
+    "p25": 0.0023060105830599443,
+    "p50": 0.003591568692592093,
+    "p75": 0.010667405920253167,
+    "p90": 0.1226612517234865,
+    "p95": 0.17791837849283323,
+    "p99": 0.2474719617317582
+   },
+   "metrics": {
+    "auc": 0.929,
+    "pr_auc": 0.243,
+    "brier_before": 0.0939,
+    "brier_after": 0.021,
+    "ece_before": 0.121,
+    "ece_after": 0.0068,
+    "auc_temporal": 0.898,
+    "brier_temporal": 0.0134,
+    "auc_before": 0.931,
+    "pr_auc_before": 0.291
+   },
+   "cost_scenarios": [
+    {
+     "cost_ratio_fail_per_visit": 10,
+     "threshold": 0.091,
+     "flagged": 1376,
+     "tp": 197,
+     "fp": 1179,
+     "net_benefit": 0.0078,
+     "visits_per_case": 7.0
+    },
+    {
+     "cost_ratio_fail_per_visit": 20,
+     "threshold": 0.048,
+     "flagged": 1782,
+     "tp": 237,
+     "fp": 1545,
+     "net_benefit": 0.0151,
+     "visits_per_case": 7.5
+    },
+    {
+     "cost_ratio_fail_per_visit": 50,
+     "threshold": 0.02,
+     "flagged": 2203,
+     "tp": 252,
+     "fp": 1951,
+     "net_benefit": 0.0206,
+     "visits_per_case": 8.7
+    }
+   ],
+   "dca_range": [
+    0.01,
+    0.59
+   ]
+  },
+  "plant_map": {
+   "Central Jv": [
+    "Smg",
+    "Jbg",
+    "Srg"
+   ],
+   "East Jv": [
+    "Jbg",
+    "Smg"
+   ],
+   "Klm": [
+    "Klm"
+   ],
+   "Lombok": [
+    "Jbg"
+   ],
+   "Slws": [
+    "Jbg"
+   ],
+   "Smt": [
+    "Lpg"
+   ],
+   "West Jv": [
+    "Srg",
+    "Jbg"
    ]
   }
  },
@@ -2047,6 +2565,292 @@
    "p99": 0.3047461959677652,
    "max": 0.9319693064194389,
    "min": 1.929016901871685e-05
+  }
+ },
+ "model_c": {
+  "cat": {
+   "Area": [
+    "Jawa Timur",
+    "Jawa Barat",
+    "Jawa Tengah",
+    "Sumatera",
+    "Kalimantan",
+    "Ntb",
+    "8826"
+   ],
+   "House": [
+    "Close House",
+    "Close House Semi",
+    "Postal",
+    "Panggung"
+   ],
+   "Feeding": [
+    "Starter",
+    "Pre Starter",
+    "Finisher"
+   ]
+  },
+  "defaults": {
+   "Area": "Jawa Timur",
+   "House": "Close House",
+   "Feeding": "Starter"
+  },
+  "lesions": {
+   "PRV": {
+    "max": 3,
+    "default": 0,
+    "desc": ""
+   },
+   "GIZ": {
+    "max": 3,
+    "default": 0,
+    "desc": ""
+   },
+   "TW": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "ML": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "WC": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "CS": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "MC": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "FP": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "IT": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "BL": {
+    "max": 2,
+    "default": 0,
+    "desc": ""
+   },
+   "TH": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "TK": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "IH": {
+    "max": 3,
+    "default": 0,
+    "desc": ""
+   },
+   "HY": {
+    "max": 2,
+    "default": 0,
+    "desc": ""
+   },
+   "NE": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "IG": {
+    "max": 2,
+    "default": 0,
+    "desc": ""
+   },
+   "CFM": {
+    "max": 3,
+    "default": 0,
+    "desc": ""
+   },
+   "HCT": {
+    "max": 3,
+    "default": 0,
+    "desc": ""
+   },
+   "PP": {
+    "max": 2,
+    "default": 0,
+    "desc": ""
+   },
+   "Galt": {
+    "max": 2,
+    "default": 0,
+    "desc": ""
+   },
+   "RPP": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "gAC": {
+    "max": 4,
+    "default": 0,
+    "desc": ""
+   },
+   "gMX": {
+    "max": 4,
+    "default": 0,
+    "desc": ""
+   },
+   "gTN": {
+    "max": 4,
+    "default": 0,
+    "desc": ""
+   },
+   "AP": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "AC": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "AB": {
+    "max": 2,
+    "default": 0,
+    "desc": ""
+   },
+   "TRA": {
+    "max": 3,
+    "default": 1,
+    "desc": ""
+   },
+   "ARS": {
+    "max": 4,
+    "default": 0,
+    "desc": ""
+   },
+   "CDV": {
+    "max": 4,
+    "default": 0,
+    "desc": ""
+   },
+   "CT": {
+    "max": 2,
+    "default": 1,
+    "desc": ""
+   },
+   "SH": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "CLR": {
+    "max": 4,
+    "default": 2,
+    "desc": ""
+   },
+   "PL": {
+    "max": 3,
+    "default": 0,
+    "desc": ""
+   },
+   "TDS": {
+    "max": 3,
+    "default": 0,
+    "desc": ""
+   },
+   "FH": {
+    "max": 2,
+    "default": 0,
+    "desc": ""
+   },
+   "BTL": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "SC": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "RY": {
+    "max": 2,
+    "default": 0,
+    "desc": ""
+   },
+   "LE": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "BF": {
+    "max": 2,
+    "default": 0,
+    "desc": ""
+   },
+   "CL": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "PHT": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "BSM": {
+    "max": 8,
+    "default": 4,
+    "desc": ""
+   },
+   "BUR": {
+    "max": 5,
+    "default": 0,
+    "desc": ""
+   },
+   "BDM": {
+    "max": 5,
+    "default": 0,
+    "desc": ""
+   },
+   "CM": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   },
+   "Thy": {
+    "max": 1,
+    "default": 0,
+    "desc": ""
+   }
+  },
+  "age": {
+   "min": 4,
+   "max": 38,
+   "default": 17
+  },
+  "tiers": {
+   "p25": 0.24534709681523295,
+   "p50": 0.3830267276466213,
+   "p75": 0.5661090867791532,
+   "p90": 0.7424015977063351,
+   "p95": 0.815684085383001,
+   "p99": 0.9235072501263186,
+   "max": 0.9891041740795763,
+   "min": 0.0034793209612920812
   }
  }
 }
